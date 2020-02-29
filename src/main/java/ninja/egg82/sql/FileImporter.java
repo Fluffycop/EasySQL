@@ -12,36 +12,21 @@ public class FileImporter {
     private final Object lineHandlerLock = new Object();
     private StringBuilder lineHandler = new StringBuilder();
 
-    private final SQL sql;
+    final SQL sql;
+    final AsyncFileImporter async;
+
     private String delimiter = ";";
 
     private static final Pattern DELIMITER_PATTERN = Pattern.compile("^((--)|(\\/\\*[^!])|#|\\/\\/)*\\s*@?DELIMITER\\s+(.*)$", Pattern.CASE_INSENSITIVE);
 
-    public FileImporter(SQL sql) { this.sql = sql; }
+    public FileImporter(SQL sql) {
+        this.sql = sql;
+        this.async = new AsyncFileImporter(this);
+    }
 
     public void readFile(File file, boolean lineByLine) throws SQLException, IOException { readStream(new FileInputStream(file), lineByLine); }
 
-    public CompletableFuture<Void> readFileAsync(File file, boolean lineByLine) {
-        return CompletableFuture.runAsync(() -> {
-            try {
-                readFile(file, lineByLine);
-            } catch (SQLException | IOException ex) {
-                throw new CompletionException(ex);
-            }
-        });
-    }
-
     public void readResource(String resourceName, boolean lineByLine) throws SQLException, IOException { readStream(getClass().getClassLoader().getResourceAsStream(resourceName), lineByLine); }
-
-    public CompletableFuture<Void> readResourceAsync(String resourceName, boolean lineByLine) {
-        return CompletableFuture.runAsync(() -> {
-            try {
-                readResource(resourceName, lineByLine);
-            } catch (SQLException | IOException ex) {
-                throw new CompletionException(ex);
-            }
-        });
-    }
 
     public void readStream(InputStream stream, boolean lineByLine) throws SQLException, IOException {
         if (lineByLine) {
@@ -73,16 +58,6 @@ public class FileImporter {
         }
     }
 
-    public CompletableFuture<Void> readStreamAsync(InputStream stream, boolean lineByLine) {
-        return CompletableFuture.runAsync(() -> {
-            try {
-                readStream(stream, lineByLine);
-            } catch (SQLException | IOException ex) {
-                throw new CompletionException(ex);
-            }
-        });
-    }
-
     public void readString(String contents, boolean lineByLine) throws IOException, SQLException {
         if (lineByLine) {
             synchronized (lineHandlerLock) {
@@ -101,16 +76,6 @@ public class FileImporter {
         } else {
             sql.execute(contents);
         }
-    }
-
-    public CompletableFuture<Void> readStringAsync(String contents, boolean lineByLine) {
-        return CompletableFuture.runAsync(() -> {
-            try {
-                readString(contents, lineByLine);
-            } catch (SQLException | IOException ex) {
-                throw new CompletionException(ex);
-            }
-        });
     }
 
     private void readLine(String line) throws SQLException {
