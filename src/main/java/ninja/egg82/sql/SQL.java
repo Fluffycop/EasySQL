@@ -2,6 +2,7 @@ package ninja.egg82.sql;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+
 import java.util.Properties;
 
 import ninja.egg82.core.NamedParameterCallableStatement;
@@ -13,47 +14,63 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
+import java.util.concurrent.*;
 
 public class SQL implements AutoCloseable {
-    private HikariDataSource source;
+    HikariDataSource source;
+    Executor exec;
+    AsyncSQL asyncSql;
 
-    public SQL(HikariConfig config) { source = new HikariDataSource(config); }
-
-    public SQL(Properties properties) { source = new HikariDataSource(new HikariConfig(properties)); }
-
-    public SQL(String propertiesFile) { source = new HikariDataSource(new HikariConfig(propertiesFile)); }
-
-    public SQL(String connectionString, String user, String pass) {
-        source = new HikariDataSource();
-        source.setJdbcUrl(connectionString);
-        source.setUsername(user);
-        source.setPassword(pass);
-        source.setAutoCommit(true);
+    public SQL(HikariConfig config) {
+        this(config, ForkJoinPool.commonPool());
     }
 
-    public HikariDataSource getRawSource() { return source; }
+    public SQL(HikariConfig config, Executor executor) {
+        source = new HikariDataSource(config);
+        this.exec = executor;
+        asyncSql = new AsyncSQL(this);
+    }
 
-    public void close() { source.close(); }
+    public SQL(Properties properties) {
+        this(new HikariConfig(properties));
+    }
 
-    public boolean isClosed() { return source.isClosed(); }
+    public SQL(String propertiesFile) {
+        this(new HikariConfig(propertiesFile));
+    }
 
-    public boolean isRunning() { return source.isRunning(); }
+    public HikariDataSource getRawSource() {
+        return source;
+    }
+
+    public void close() {
+        if(!exec.equals(ForkJoinPool.commonPool()) && exec instanceof ExecutorService) {
+            ((ExecutorService)exec).shutdown();
+        }
+        source.close();
+    }
+
+    public boolean isClosed() {
+        return source.isClosed();
+    }
+
+    public boolean isRunning() {
+        return source.isRunning();
+    }
 
     public boolean tableExists(String schema, String table) throws SQLException {
-        try (Connection connection = source.getConnection(); ResultSet results = connection.getMetaData().getTables(null, schema, table, new String[] { "TABLE" })) {
+        try (Connection connection = source.getConnection(); ResultSet results = connection.getMetaData().getTables(null, schema, table, new String[]{"TABLE"})) {
             while (results.next()) {
                 String schemaResult = results.getString(1);
                 String tableResult = results.getString(3);
                 if (
                         (
                                 (schema == null && schemaResult == null)
-                                || (schema != null && schema.equalsIgnoreCase(schemaResult))
+                                        || (schema != null && schema.equalsIgnoreCase(schemaResult))
                         )
-                        && (
+                                && (
                                 (table == null && tableResult == null)
-                                || (table != null && table.equalsIgnoreCase(tableResult))
+                                        || (table != null && table.equalsIgnoreCase(tableResult))
                         )
                 ) {
                     return true;
@@ -61,16 +78,6 @@ public class SQL implements AutoCloseable {
             }
             return false;
         }
-    }
-
-    public CompletableFuture<Boolean> tableExistsAsync(String schema, String table) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                return tableExists(schema, table);
-            } catch (SQLException ex) {
-                throw new CompletionException(ex);
-            }
-        });
     }
 
     public SQLQueryResult query(String q, Object... params) throws SQLException {
@@ -105,26 +112,6 @@ public class SQL implements AutoCloseable {
         }
     }
 
-    public CompletableFuture<SQLQueryResult> queryAsync(String q, Object... params) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                return query(q, params);
-            } catch (SQLException ex) {
-                throw new CompletionException(ex);
-            }
-        });
-    }
-
-    public CompletableFuture<SQLQueryResult> queryAsync(String q, Map<String, Object> namedParams) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                return query(q, namedParams);
-            } catch (SQLException ex) {
-                throw new CompletionException(ex);
-            }
-        });
-    }
-
     public SQLExecuteResult execute(String q, Object... params) throws SQLException {
         try (Connection connection = source.getConnection(); PreparedStatement statement = connection.prepareStatement(q, Statement.RETURN_GENERATED_KEYS)) {
             if (params != null) {
@@ -155,26 +142,6 @@ public class SQL implements AutoCloseable {
             }
             return result;
         }
-    }
-
-    public CompletableFuture<SQLExecuteResult> executeAsync(String q, Object... params) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                return execute(q, params);
-            } catch (SQLException ex) {
-                throw new CompletionException(ex);
-            }
-        });
-    }
-
-    public CompletableFuture<SQLExecuteResult> executeAsync(String q, Map<String, Object> namedParams) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                return execute(q, namedParams);
-            } catch (SQLException ex) {
-                throw new CompletionException(ex);
-            }
-        });
     }
 
     public SQLExecuteResult[] batchExecute(String q, Object[]... params) throws SQLException {
@@ -219,26 +186,6 @@ public class SQL implements AutoCloseable {
         }
     }
 
-    public CompletableFuture<SQLExecuteResult[]> batchExecuteAsync(String q, Object[]... params) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                return batchExecute(q, params);
-            } catch (SQLException ex) {
-                throw new CompletionException(ex);
-            }
-        });
-    }
-
-    public CompletableFuture<SQLExecuteResult[]> batchExecuteAsync(String q, Map<String, Object>... namedParams) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                return batchExecute(q, namedParams);
-            } catch (SQLException ex) {
-                throw new CompletionException(ex);
-            }
-        });
-    }
-
     public SQLQueryResult call(String q, Object... params) throws SQLException {
         try (Connection connection = source.getConnection(); CallableStatement statement = connection.prepareCall(q)) {
             if (params != null) {
@@ -269,26 +216,6 @@ public class SQL implements AutoCloseable {
             }
             return result;
         }
-    }
-
-    public CompletableFuture<SQLQueryResult> calAsync(String q, Object... params) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                return call(q, params);
-            } catch (SQLException ex) {
-                throw new CompletionException(ex);
-            }
-        });
-    }
-
-    public CompletableFuture<SQLQueryResult> callAsync(String q, Map<String, Object> namedParams) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                return call(q, namedParams);
-            } catch (SQLException ex) {
-                throw new CompletionException(ex);
-            }
-        });
     }
 
     private SQLQueryResult query(PreparedStatement statement) throws SQLException {
@@ -386,5 +313,9 @@ public class SQL implements AutoCloseable {
         }
 
         return retVal;
+    }
+
+    public AsyncSQL async() {
+        return asyncSql;
     }
 }
