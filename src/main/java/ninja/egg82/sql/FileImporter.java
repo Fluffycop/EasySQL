@@ -24,41 +24,53 @@ public class FileImporter {
         this.async = new AsyncFileImporter(this);
     }
 
-    public void readFile(File file, boolean lineByLine) throws SQLException, IOException { readStream(new FileInputStream(file), lineByLine); }
-
-    public void readResource(String resourceName, boolean lineByLine) throws SQLException, IOException { readStream(getClass().getClassLoader().getResourceAsStream(resourceName), lineByLine); }
-
-    public void readStream(InputStream stream, boolean lineByLine) throws SQLException, IOException {
-        if (lineByLine) {
-            synchronized (lineHandlerLock) {
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8.name()))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        readLine(line);
-                    }
-                } catch (UnsupportedEncodingException ignored) { }
-                if (lineHandler.length() > 0) {
-                    // Double-check to make sure we didn't catch a few line terminators at the end of the file
-                    String last = lineHandler.toString().trim();
-                    if (last.length() > 0) {
-                        throw new IOException("Missing deliminator at end of file (" + delimiter + ") at '" + lineHandler.toString() + "'.");
-                    }
-                }
-            }
-        } else {
-            StringBuilder builder = new StringBuilder();
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8.name()))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    builder.append(line);
-                    builder.append('\n');
-                }
-            } catch (UnsupportedEncodingException ignored) { }
-            sql.execute(builder.toString());
+    public void readFile(File file, boolean lineByLine) {
+        try {
+            readStream(new FileInputStream(file), lineByLine);
+        }catch(FileNotFoundException e) {
+            throw new RuntimeException(e);
         }
     }
 
-    public void readString(String contents, boolean lineByLine) throws IOException, SQLException {
+    public void readResource(String resourceName, boolean lineByLine) { readStream(getClass().getClassLoader().getResourceAsStream(resourceName), lineByLine); }
+
+    public void readStream(InputStream stream, boolean lineByLine) {
+        try {
+            if (lineByLine) {
+                synchronized (lineHandlerLock) {
+                    try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8.name()))) {
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            readLine(line);
+                        }
+                    } catch (UnsupportedEncodingException ignored) {
+                    }
+                    if (lineHandler.length() > 0) {
+                        // Double-check to make sure we didn't catch a few line terminators at the end of the file
+                        String last = lineHandler.toString().trim();
+                        if (last.length() > 0) {
+                            throw new IOException("Missing deliminator at end of file (" + delimiter + ") at '" + lineHandler.toString() + "'.");
+                        }
+                    }
+                }
+            } else {
+                StringBuilder builder = new StringBuilder();
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8.name()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        builder.append(line);
+                        builder.append('\n');
+                    }
+                } catch (UnsupportedEncodingException ignored) {
+                }
+                sql.execute(builder.toString());
+            }
+        }catch(SQLException | IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void readString(String contents, boolean lineByLine) {
         if (lineByLine) {
             synchronized (lineHandlerLock) {
                 String[] lines = contents.replaceAll("\r\n", "\n").split("\n");
@@ -69,16 +81,16 @@ public class FileImporter {
                     // Double-check to make sure we didn't catch a few line terminators at the end of the file
                     String last = lineHandler.toString().trim();
                     if (last.length() > 0) {
-                        throw new IOException("Missing deliminator at end of string (" + delimiter + ") at '" + lineHandler.toString() + "'.");
+                        throw new RuntimeException("Missing deliminator at end of string (" + delimiter + ") at '" + lineHandler.toString() + "'.");
                     }
                 }
             }
         } else {
-            sql.execute(contents);
+            try {sql.execute(contents);} catch(SQLException e) {throw new RuntimeException(e);}
         }
     }
 
-    private void readLine(String line) throws SQLException {
+    private void readLine(String line) {
         line = line.trim();
         if (line.length() == 0) {
             return;
@@ -92,7 +104,7 @@ public class FileImporter {
                 delimiter = matcher.group(4);
             } else if (line.contains(delimiter)) {
                 lineHandler.append(line, 0, line.lastIndexOf(delimiter));
-                sql.execute(lineHandler.toString());
+                try {sql.execute(lineHandler.toString());} catch(SQLException e) {throw new RuntimeException(e);}
                 lineHandler.setLength(0);
                 if (line.lastIndexOf(delimiter) + delimiter.length() < line.length() - 1) {
                     lineHandler.append(line.substring(line.lastIndexOf(delimiter) + delimiter.length()));
