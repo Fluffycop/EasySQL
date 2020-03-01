@@ -16,43 +16,27 @@ public class AsyncFileImporter {
 
     public CompletableFuture<Void> readFileAsync(File file, boolean lineByLine) {
         return CompletableFuture.runAsync(() -> {
-            try {
-                importer.readFile(file, lineByLine);
-            } catch (SQLException | IOException ex) {
-                throw new CompletionException(ex);
-            }
+            importer.readFile(file, lineByLine);
         }, importer.sql.exec);
     }
 
     public CompletableFuture<Void> readResourceAsync(String resourceName, boolean lineByLine) {
         return CompletableFuture.runAsync(() -> {
-            try {
-                importer.readResource(resourceName, lineByLine);
-            } catch (SQLException | IOException ex) {
-                throw new CompletionException(ex);
-            }
+            importer.readResource(resourceName, lineByLine);
         }, importer.sql.exec);
     }
 
 
     public CompletableFuture<Void> readStreamAsync(InputStream stream, boolean lineByLine) {
         return CompletableFuture.runAsync(() -> {
-            try {
-                importer.readStream(stream, lineByLine);
-            } catch (SQLException | IOException ex) {
-                throw new CompletionException(ex);
-            }
+            importer.readStream(stream, lineByLine);
         }, importer.sql.exec);
     }
 
 
     public CompletableFuture<Void> readStringAsync(String contents, boolean lineByLine) {
         return CompletableFuture.runAsync(() -> {
-            try {
-                importer.readString(contents, lineByLine);
-            } catch (SQLException | IOException ex) {
-                throw new CompletionException(ex);
-            }
+            importer.readString(contents, lineByLine);
         }, importer.sql.exec);
     }
 }

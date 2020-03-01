@@ -28,83 +28,51 @@ public class AsyncSQL {
 
     public CompletableFuture<SQLQueryResult> query(String q, Object... params) {
         return CompletableFuture.supplyAsync(() -> {
-            try {
-                return sql.query(q, params);
-            } catch (SQLException ex) {
-                throw new CompletionException(ex);
-            }
+            return sql.query(q, params);
         }, sql.exec);
     }
 
 
     public CompletableFuture<SQLQueryResult> query(String q, Map<String, Object> namedParams) {
         return CompletableFuture.supplyAsync(() -> {
-            try {
-                return sql.query(q, namedParams);
-            } catch (SQLException ex) {
-                throw new CompletionException(ex);
-            }
+            return sql.query(q, namedParams);
         }, sql.exec);
     }
 
 
     public CompletableFuture<SQLExecuteResult> execute(String q, Object... params) {
         return CompletableFuture.supplyAsync(() -> {
-            try {
-                return sql.execute(q, params);
-            } catch (SQLException ex) {
-                throw new CompletionException(ex);
-            }
+            return sql.execute(q, params);
         }, sql.exec);
     }
 
     public CompletableFuture<SQLExecuteResult> execute(String q, Map<String, Object> namedParams) {
         return CompletableFuture.supplyAsync(() -> {
-            try {
-                return sql.execute(q, namedParams);
-            } catch (SQLException ex) {
-                throw new CompletionException(ex);
-            }
+            return sql.execute(q, namedParams);
         }, sql.exec);
     }
 
     public CompletableFuture<SQLExecuteResult[]> batchExecute(String q, Object[]... params) {
         return CompletableFuture.supplyAsync(() -> {
-            try {
-                return sql.batchExecute(q, params);
-            } catch (SQLException ex) {
-                throw new CompletionException(ex);
-            }
+            return sql.batchExecute(q, params);
         }, sql.exec);
     }
 
     public CompletableFuture<SQLExecuteResult[]> batchExecute(String q, Map<String, Object>... namedParams) {
         return CompletableFuture.supplyAsync(() -> {
-            try {
-                return sql.batchExecute(q, namedParams);
-            } catch (SQLException ex) {
-                throw new CompletionException(ex);
-            }
+            return sql.batchExecute(q, namedParams);
         }, sql.exec);
     }
 
     public CompletableFuture<SQLQueryResult> call(String q, Object... params) {
         return CompletableFuture.supplyAsync(() -> {
-            try {
-                return sql.call(q, params);
-            } catch (SQLException ex) {
-                throw new CompletionException(ex);
-            }
+            return sql.call(q, params);
         }, sql.exec);
     }
 
     public CompletableFuture<SQLQueryResult> call(String q, Map<String, Object> namedParams) {
         return CompletableFuture.supplyAsync(() -> {
-            try {
-                return sql.call(q, namedParams);
-            } catch (SQLException ex) {
-                throw new CompletionException(ex);
-            }
+            return sql.call(q, namedParams);
         }, sql.exec);
     }
 }

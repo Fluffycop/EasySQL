@@ -65,7 +65,7 @@ public class FileImporter {
                 }
                 sql.execute(builder.toString());
             }
-        }catch(SQLException | IOException e) {
+        }catch(IOException e) {
             throw new RuntimeException(e);
         }
     }
@@ -86,7 +86,7 @@ public class FileImporter {
                 }
             }
         } else {
-            try {sql.execute(contents);} catch(SQLException e) {throw new RuntimeException(e);}
+            sql.execute(contents);
         }
     }
 
@@ -104,7 +104,7 @@ public class FileImporter {
                 delimiter = matcher.group(4);
             } else if (line.contains(delimiter)) {
                 lineHandler.append(line, 0, line.lastIndexOf(delimiter));
-                try {sql.execute(lineHandler.toString());} catch(SQLException e) {throw new RuntimeException(e);}
+                sql.execute(lineHandler.toString());
                 lineHandler.setLength(0);
                 if (line.lastIndexOf(delimiter) + delimiter.length() < line.length() - 1) {
                     lineHandler.append(line.substring(line.lastIndexOf(delimiter) + delimiter.length()));
