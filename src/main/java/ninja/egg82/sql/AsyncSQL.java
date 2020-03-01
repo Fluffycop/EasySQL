@@ -75,4 +75,12 @@ public class AsyncSQL {
             return sql.call(q, namedParams);
         }, sql.exec);
     }
+
+    public CompletableFuture<SQLQueryResult[]> querySeparately(String[] q, Object... params) {
+        return CompletableFuture.supplyAsync(() -> sql.querySeperately(q, params), sql.exec);
+    }
+
+    public CompletableFuture<SQLExecuteResult[]> executeSeparately(String[] q, Object... params) {
+        return CompletableFuture.supplyAsync(() -> sql.executeSeparately(q, params), sql.exec);
+    }
 }

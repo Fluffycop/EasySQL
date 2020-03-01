@@ -120,6 +120,48 @@ public class SQL implements AutoCloseable {
         }
     }
 
+    public SQLQueryResult[] querySeperately(String[] qs, Object... params) {
+        SQLQueryResult[] result = new SQLQueryResult[qs.length];
+        int begin = 0;
+        for(int i = 0; i < qs.length; i++) {
+            int replacements = 0;
+            String q = qs[i];
+            for(char c : q.toCharArray()) {
+                if (c == '?') {
+                    replacements++;
+                }
+            }
+            Object[] newParams = new Object[replacements];
+            for(int j = 0; j < replacements; j++) {
+                newParams[j] = params[j + begin];
+            }
+            begin += replacements;
+            result[i] = query(q, newParams);
+        }
+        return result;
+    }
+
+    public SQLExecuteResult[] executeSeparately(String[] qs, Object... params) {
+        SQLExecuteResult[] result = new SQLExecuteResult[qs.length];
+        int begin = 0;
+        for(int i = 0; i < qs.length; i++) {
+            int replacements = 0;
+            String q = qs[i];
+            for(char c : q.toCharArray()) {
+                if (c == '?') {
+                    replacements++;
+                }
+            }
+            Object[] newParams = new Object[replacements];
+            for(int j = 0; j < replacements; j++) {
+                newParams[j] = params[j + begin];
+            }
+            begin += replacements;
+            result[i] = execute(q, newParams);
+        }
+        return result;
+    }
+
     public SQLExecuteResult execute(String q, Object... params)  {
         try {
             try (Connection connection = source.getConnection(); PreparedStatement statement = connection.prepareStatement(q, Statement.RETURN_GENERATED_KEYS)) {
